@@ -77,6 +77,32 @@ void zero_tensor_print(struct zero_tensor *t) {
         }
     }
     fprintf(stderr, "]\tdtype=%s\n", zero_dtype_name(t->dtype));
+    size_t numel = zero_tensor_numel(t);
+    if (t->dtype == ZERO_FLOAT32) {
+        for (int i = 0; i < numel; i++) {
+            fprintf(stderr, "%f", ((float *)t->data)[i]);
+            if (i < numel - 1) {
+                fprintf(stderr, ", ");
+            }
+        }
+        fprintf(stderr, "\n");
+    } else if (t->dtype == ZERO_INT32) {
+        for (int i = 0; i < numel; i++) {
+            fprintf(stderr, "%d", ((int32_t *)t->data)[i]);
+            if (i < numel - 1) {
+                fprintf(stderr, ", ");
+            }
+        }
+        fprintf(stderr, "\n");
+    } else if (t->dtype == ZERO_INT64) {
+        for (int i = 0; i < numel; i++) {
+            fprintf(stderr, "%ld", ((int64_t *)t->data)[i]);
+            if (i < numel - 1) {
+                fprintf(stderr, ", ");
+            }
+        }
+        fprintf(stderr, "\n");
+    }
 }
 
 int zero_tensor_fill(struct zero_tensor *t, float value) {

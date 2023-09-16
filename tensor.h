@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define ZERO_MAX_TENSOR_NAME_LEN 256
+#define ZERO_MAX_TENSOR_NAME_LEN 128
 
 enum zero_dtype {
     ZERO_FLOAT32,
