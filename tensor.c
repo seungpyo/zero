@@ -2,7 +2,7 @@
 #include <math.h>
 #include "tensor.h"
 
-static const char* zero_dtype_name(enum zero_dtype t) {
+const char* zero_dtype_name(enum zero_dtype t) {
     switch (t)
     {
     case ZERO_FLOAT32:
@@ -21,7 +21,7 @@ static const char* zero_dtype_name(enum zero_dtype t) {
     }
 }
 
-static size_t zero_dtype_size(enum zero_dtype t) {
+size_t zero_dtype_size(enum zero_dtype t) {
     switch (t)
     {
     case ZERO_FLOAT32:
@@ -90,35 +90,31 @@ int zero_tensor_fill(struct zero_tensor *t, float value) {
     return 0;
 }
 
-int zero_tensor_save(FILE* fp, struct zero_tensor *t) {
-    if (t == NULL) {
-        fprintf(stderr, "tensor is NULL\n");
-        return -1;
-    }
+size_t zero_tensor_save(FILE *fp, struct zero_tensor *t) {
+    size_t offset0 = ftell(fp);
     fwrite(t->name, sizeof(char), ZERO_MAX_TENSOR_NAME_LEN, fp);
-    fwrite(&t->dtype, sizeof(enum zero_dtype), 1, fp);
-    fwrite(&t->ndim, sizeof(int), 1, fp);
+    fwrite(&(t->dtype), sizeof(enum zero_dtype), 1, fp);
+    fwrite(&(t->ndim), sizeof(int), 1, fp);
     fwrite(t->shape, sizeof(int), t->ndim, fp);
     fwrite(t->data, zero_dtype_size(t->dtype), zero_tensor_numel(t), fp);
-    return 0;
+    size_t offset1 = ftell(fp);
+    return offset1 - offset0;
 }
 
-int zero_tensor_load(FILE *fp, struct zero_tensor *t) {
-    if (t == NULL) {
-        fprintf(stderr, "tensor is NULL\n");
-        return -1;
-    }
+size_t zero_tensor_load(FILE *fp, struct zero_tensor *t) {
+    size_t offset0 = ftell(fp);
     fread(t->name, sizeof(char), ZERO_MAX_TENSOR_NAME_LEN, fp);
-    fread(&t->dtype, sizeof(enum zero_dtype), 1, fp);
-    fread(&t->ndim, sizeof(int), 1, fp);
+    fread(&(t->dtype), sizeof(enum zero_dtype), 1, fp);
+    fread(&(t->ndim), sizeof(int), 1, fp);
     t->shape = (int *)malloc(t->ndim * sizeof(int));
     fread(t->shape, sizeof(int), t->ndim, fp);
     t->data = (void *)malloc(zero_tensor_nbytes(t));
     fread(t->data, zero_dtype_size(t->dtype), zero_tensor_numel(t), fp);
-    return 0;
+    size_t offset1 = ftell(fp);
+    return offset1 - offset0;
 }
 
-bool zero_tensor_equals(struct zero_tensor *lhs, struct zero_tensor *rhs, float eps) {
+bool zero_tensor_equals(struct zero_tensor *lhs, struct zero_tensor *rhs, float eps, float *max_diff) {
     if (lhs->dtype != rhs->dtype) {
         return false;
     }
@@ -131,42 +127,44 @@ bool zero_tensor_equals(struct zero_tensor *lhs, struct zero_tensor *rhs, float 
         }
     }
     size_t numel = zero_tensor_numel(lhs);
+    float max_diff_val = 0.0f;
     for (int i = 0; i < numel; i++) {
-        if (fabs(((float *)lhs->data)[i] - ((float *)rhs->data)[i]) > eps) {
+        max_diff_val = fmax(max_diff_val, fabs(((float *)lhs->data)[i] - ((float *)rhs->data)[i]));
+        if (max_diff_val > eps) {
+            if (max_diff != NULL) {
+                *max_diff = max_diff_val;
+            }
             return false;
         }
     }
+    *max_diff = max_diff_val;
     return true;
 }
 
-int main() {
-    int *shape = (int *)malloc(2 * sizeof(int));
-    shape[0] = 2;
-    shape[1] = 3;
-    struct zero_tensor x;
-    zero_tensor_init(&x, "test", ZERO_FLOAT32, 2, shape);
-    zero_tensor_fill(&x, 3.14f);
-    zero_tensor_print(&x);
-    
-    FILE *fp = fopen("test.tensor", "wb");
-    zero_tensor_save(fp, &x);
-    fclose(fp);
+// int main() {
+//     int *shape = (int *)malloc(2 * sizeof(int));
+//     shape[0] = 2;
+//     shape[1] = 3;
+//     struct zero_tensor x;
+//     zero_tensor_init(&x, "test", ZERO_FLOAT32, 2, shape);
+//     zero_tensor_fill(&x, 3.14f);
+//     FILE *fp = fopen("test.tensor", "wb");
+//     zero_tensor_save(fp, &x);
+//     fclose(fp);
 
-    struct zero_tensor y;
-    fp = fopen("test.tensor", "rb");
-    zero_tensor_load(fp, &y);
-    fclose(fp);
-    
-    bool ok = zero_tensor_equals(&x, &y, 1e-6);
+//     struct zero_tensor y;
+//     zero_tensor_init(&y, "test", ZERO_FLOAT32, 2, shape);
+//     fp = fopen("test.tensor", "rb");
+//     zero_tensor_load(fp, &y);
+//     fclose(fp);
 
-    if (ok) {
-        fprintf(stderr, "test passed\n");
-    } else {
-        fprintf(stderr, "test failed\n");
-    }
+//     if (zero_tensor_equals(&x, &y, 1e-6f)) {
+//         fprintf(stderr, "OK: x and y are equal\n");
+//     } else {
+//         fprintf(stderr, "FAIL: x and y are not equal\n");
+//     }
 
-    zero_tensor_free(&x);
-    zero_tensor_free(&y);
-    free(shape);
-    return 0;
-}
+//     zero_tensor_free(&x);
+//     free(shape);
+//     return 0;
+// }
