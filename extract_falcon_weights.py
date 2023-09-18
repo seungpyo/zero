@@ -20,7 +20,7 @@ for bin_filename in bin_filenames:
     t1 = time()
     print(f"Loaded {bin_filename} in {t1 - t0:.2f} seconds")
     for k, v in state_dict.items():
-        print(f"Tensor name: {k}, shape: {v.shape}, dtype: {v.dtype}, ndim: {v.ndim}")
+        print(f"NAME: {k}\tSHAPE: {v.shape}")
 
 
 
