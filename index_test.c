@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include "index.h"
 #include "tensor.h"
@@ -29,6 +30,7 @@ int test_index(int num_tests, int max_string_length) {
         struct zero_index_object *object = (struct zero_index_object *)malloc(sizeof(struct zero_index_object));
         object->hash = zero_fnv_hash(test_strings[i]);
         object->data = test_strings[i];
+        object->size = sizeof(char) * max_string_length;
         zero_index_add(&index, object);
     }
     t1 = clock();
@@ -69,6 +71,7 @@ int test_save_and_load(int num_test_strings, int num_test_tensors) {
         struct zero_index_object *object = (struct zero_index_object *)malloc(sizeof(struct zero_index_object));
         object->hash = zero_fnv_hash(test_strings[i]);
         object->data = test_strings[i];
+        object->size = sizeof(char) * 100;
         zero_index_add(&index, object);
     }
     printf("Added %d test strings to index\n", num_test_strings);
@@ -84,6 +87,7 @@ int test_save_and_load(int num_test_strings, int num_test_tensors) {
         struct zero_index_object *object = (struct zero_index_object *)malloc(sizeof(struct zero_index_object));
         object->hash = zero_fnv_hash(name);
         object->data = &test_tensors[i];
+        object->size = zero_tensor_nbytes(&test_tensors[i]);
         zero_index_add(&index, object);
     }
     printf("Added %d test tensors to index\n", num_test_tensors);
@@ -98,11 +102,14 @@ int test_save_and_load(int num_test_strings, int num_test_tensors) {
     printf("Initialized index2\n");
     zero_index_load(&index2, "test.zero");
     printf("Loaded index from file\n");
-    printf("Loaded index from file\n");
     for (int i = 0; i < num_test_strings; ++i) {
         struct zero_index_object *object = zero_index_get(&index2, zero_fnv_hash(test_strings[i]));
         if (object == NULL) {
             printf("Object not found: %s\n", test_strings[i]);
+            return 1;
+        }
+        if (strcmp(test_strings[i], (char *)object->data) != 0) {
+            printf("String not equal, read=%s, expected=%s\n", (char *)object->data, test_strings[i]);
             return 1;
         }
     }

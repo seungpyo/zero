@@ -1,5 +1,8 @@
 #include "index.h"
 #include "tensor.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/errno.h>
 
 hash_t zero_fnv_hash(char *str) {
     hash_t hash = 2166136261;
@@ -46,6 +49,7 @@ void zero_index_remove(struct zero_index *index, hash_t hash) {
 
 struct zero_index_object *zero_index_get(struct zero_index *index, hash_t hash) {
     for (struct zero_index_object_list *p = index->objects; p != NULL; p = p->next) {
+        printf("zero_index_get: %u %u\n", p->object->hash, hash);
         if (p->object->hash == hash) {
             return p->object;
         }
@@ -61,19 +65,32 @@ struct zero_index_object_ref {
 
 
 int zero_index_save(struct zero_index *index, char *path) {
-    FILE *fp = fopen(path, "rb");
+    FILE *fp = fopen(path, "wb");
     if (fp == NULL) {
+        fprintf(stderr, "zero_index_save: failed to open file %s\n", path);
+        fprintf(stderr, "zero_index_save: errno=%d\n", errno);
         return 1;
     }
+    fwrite("ZERO", sizeof(char), 4, fp);
     fwrite(&index->num_objects, sizeof(uint32_t), 1, fp);
-    for (struct zero_index_object_list *p = index->objects; p != NULL; p = p->next) {
-        struct zero_index_object_ref ref;
-        ref.hash = p->object->hash;
-        ref.offset = ftell(fp);
-        ref.size = p->object->size;
-        fwrite(&ref, sizeof(struct zero_index_object_ref), 1, fp);
+
+    uint64_t offset = ftell(fp) + sizeof(struct zero_index_object_ref) * index->num_objects;
+    struct zero_index_object_ref *refs = (struct zero_index_object_ref *)malloc(sizeof(struct zero_index_object_ref) * index->num_objects);
+    int i;
+    struct zero_index_object_list *p;
+    for (i = 0, p = index->objects; p != NULL; p = p->next, ++i) {
+        refs[i] = (struct zero_index_object_ref){
+            .hash = p->object->hash,
+            .offset = offset,
+            .size = p->object->size
+        };
+        offset += p->object->size;
+        printf("zero_index_save: hash=%d offset=%llu size=%d\n", refs[i].hash, refs[i].offset, refs[i].size);
     }
-    for (struct zero_index_object_list *p = index->objects; p != NULL; p = p->next) {
+    fwrite(refs, sizeof(struct zero_index_object_ref), index->num_objects, fp);
+
+    for (i = 0, p = index->objects; p != NULL; p = p->next, ++i) {
+        fseek(fp, refs[i].offset, SEEK_SET);
         switch (p->object->type) {
             case bytes:
                 fwrite(p->object->data, sizeof(char), p->object->size, fp);

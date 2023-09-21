@@ -10,7 +10,7 @@ enum zero_dtype {
     ZERO_FLOAT32,
     ZERO_INT32,
     ZERO_INT64,
-    ZERO_BFLOAT16,
+    ZERO_BFLOAT16
 };
 const char* zero_dtype_name(enum zero_dtype t);
 size_t zero_dtype_size(enum zero_dtype t);
