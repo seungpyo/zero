@@ -67,10 +67,6 @@ size_t zero_tensor_numel(struct zero_tensor *t) {
     }
     return numel;
 }
-size_t zero_tensor_nbytes(struct zero_tensor *t) {
-    return zero_tensor_numel(t) * zero_dtype_size(t->dtype);
-}
-
 
 void zero_tensor_init(
     struct zero_tensor *t, 
@@ -81,7 +77,7 @@ void zero_tensor_init(
     t->ndim = ndim;
     t->shape = (int *)malloc(ndim * sizeof(int));
     memcpy(t->shape, shape, ndim * sizeof(int));
-    t->data = (void *)malloc(zero_tensor_nbytes(t));
+    t->data = (void *)calloc(zero_tensor_numel(t), zero_dtype_size(t->dtype));
 }
 
 void zero_tensor_free(struct zero_tensor *t) {
@@ -180,7 +176,7 @@ size_t zero_tensor_load(FILE *fp, struct zero_tensor *t) {
     fread(&(t->ndim), sizeof(int), 1, fp);
     t->shape = (int *)malloc(t->ndim * sizeof(int));
     fread(t->shape, sizeof(int), t->ndim, fp);
-    t->data = (void *)malloc(zero_tensor_nbytes(t));
+    t->data = (void *)calloc(zero_tensor_numel(t), zero_dtype_size(t->dtype));
     fread(t->data, zero_dtype_size(t->dtype), zero_tensor_numel(t), fp);
     size_t offset1 = ftell(fp);
     return offset1 - offset0;

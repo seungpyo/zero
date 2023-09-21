@@ -31,6 +31,7 @@ int test_index(int num_tests, int max_string_length) {
         object->hash = zero_fnv_hash(test_strings[i]);
         object->data = test_strings[i];
         object->size = sizeof(char) * max_string_length;
+        object->type = ZERO_BYTES;
         zero_index_add(&index, object);
     }
     t1 = clock();
@@ -68,14 +69,13 @@ int test_save_and_load(int num_test_strings, int num_test_tensors) {
     for (int i = 0; i < num_test_strings; ++i) {
         test_strings[i] = (char *)calloc(100, sizeof(char));
         snprintf(test_strings[i], 100, "test string %d", i);
-        struct zero_index_object *object = (struct zero_index_object *)malloc(sizeof(struct zero_index_object));
-        object->hash = zero_fnv_hash(test_strings[i]);
-        object->data = test_strings[i];
-        object->size = sizeof(char) * 100;
-        zero_index_add(&index, object);
+        struct zero_index_object object;
+        zero_index_object_init(&object, zero_fnv_hash(test_strings[i]), test_strings[i], ZERO_BYTES);
+        zero_index_add(&index, &object);
     }
     printf("Added %d test strings to index\n", num_test_strings);
     struct zero_tensor *test_tensors = (struct zero_tensor *)malloc(sizeof(struct zero_tensor) * num_test_tensors);
+    struct zero_index_object object;
     for (int i = 0; i < num_test_tensors; ++i) {
         char name[ZERO_MAX_TENSOR_NAME_LEN];
         sprintf(name, "test_tensor_%d", i);
@@ -84,11 +84,11 @@ int test_save_and_load(int num_test_strings, int num_test_tensors) {
         shape[1] = 3;
         zero_tensor_init(&test_tensors[i], name, ZERO_FLOAT32, 2, shape);
         zero_tensor_fill(&test_tensors[i], &i);
-        struct zero_index_object *object = (struct zero_index_object *)malloc(sizeof(struct zero_index_object));
-        object->hash = zero_fnv_hash(name);
-        object->data = &test_tensors[i];
-        object->size = zero_tensor_nbytes(&test_tensors[i]);
-        zero_index_add(&index, object);
+        printf("xxx");
+        zero_index_object_init(&object, zero_fnv_hash(name), &test_tensors[i], ZERO_TENSOR);
+        printf("aaa");
+        printf("Adding object(name=%s hash=%d)\n", ((struct zero_tensor *)object.data)->name, object.hash);
+        zero_index_add(&index, &object);
     }
     printf("Added %d test tensors to index\n", num_test_tensors);
 

@@ -26,7 +26,6 @@ struct zero_tensor {
     void *data;
 };
 size_t zero_tensor_numel(struct zero_tensor *t);
-size_t zero_tensor_nbytes(struct zero_tensor *t);
 void zero_tensor_init(struct zero_tensor *t, char *name, enum zero_dtype dtype, int ndim, int *shape);
 void zero_tensor_free(struct zero_tensor *t);
 void zero_tensor_print(struct zero_tensor *t);

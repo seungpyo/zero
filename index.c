@@ -21,8 +21,8 @@ void zero_index_free(struct zero_index *index) {
     struct zero_index_object_list *cur, *next;
     for (cur = index->objects; cur != NULL; cur = next) {
         next = cur->next;
-        free(cur->object);
-        free(cur);
+        // zero_index_object_free(cur->object);
+        // free(cur);
     }
 }
 
@@ -49,7 +49,6 @@ void zero_index_remove(struct zero_index *index, hash_t hash) {
 
 struct zero_index_object *zero_index_get(struct zero_index *index, hash_t hash) {
     for (struct zero_index_object_list *p = index->objects; p != NULL; p = p->next) {
-        printf("zero_index_get: %u %u\n", p->object->hash, hash);
         if (p->object->hash == hash) {
             return p->object;
         }
@@ -57,11 +56,6 @@ struct zero_index_object *zero_index_get(struct zero_index *index, hash_t hash) 
     return NULL;
 }
 
-struct zero_index_object_ref {
-    hash_t hash;
-    uint64_t offset;
-    uint32_t size;
-};
 
 
 int zero_index_save(struct zero_index *index, char *path) {
@@ -85,20 +79,24 @@ int zero_index_save(struct zero_index *index, char *path) {
             .size = p->object->size
         };
         offset += p->object->size;
-        printf("zero_index_save: hash=%d offset=%llu size=%d\n", refs[i].hash, refs[i].offset, refs[i].size);
+        printf("zero_index_save: hash=%d offset=%llu size=%d type=%d\n", refs[i].hash, refs[i].offset, refs[i].size);
     }
     fwrite(refs, sizeof(struct zero_index_object_ref), index->num_objects, fp);
 
+    struct zero_tensor * t; 
     for (i = 0, p = index->objects; p != NULL; p = p->next, ++i) {
         fseek(fp, refs[i].offset, SEEK_SET);
         switch (p->object->type) {
-            case bytes:
+            case ZERO_BYTES:
                 fwrite(p->object->data, sizeof(char), p->object->size, fp);
                 break;
-            case tensor:
+            case ZERO_TENSOR:
+                t = (struct zero_tensor *)p->object->data;
+                printf("zero_index_save: saving tensor %s\n", t->name);
+                zero_tensor_print(t);
                 zero_tensor_save(fp, (struct zero_tensor *)p->object->data);
                 break;
-            case operator:
+            case ZERO_OPERATOR:
                 fprintf(stderr, "zero_index_save: operator not implemented\n");
                 fclose(fp);
                 return 1;
@@ -134,19 +132,47 @@ int zero_index_load(struct zero_index *index, char *path) {
         object->size = refs[i].size;
         fseek(fp, refs[i].offset, SEEK_SET);
         switch (object->type) {
-            case bytes:
+            case ZERO_BYTES:
                 object->data = malloc(object->size);
                 fread(object->data, sizeof(char), object->size, fp);
                 break;
-            case tensor:
+            case ZERO_TENSOR:
                 zero_tensor_load(fp, (struct zero_tensor *)object->data);
                 break;
-            case operator:
+            case ZERO_OPERATOR:
                 fprintf(stderr, "zero_index_load: operator not implemented, ignoring...\n");
                 break;
         }
         zero_index_add(index, object);
     }
     fclose(fp);
+    return 0;
+}
+
+void zero_index_object_init(struct zero_index_object *object, hash_t hash, void *data, enum zero_index_object_type type) {
+    object->hash = hash;
+    object->type = type;
+    object->data = data;
+    object->size = zero_index_object_size(object);
+}
+
+void zero_index_object_free(struct zero_index_object *object) {
+    free(object->data);
+}
+
+size_t zero_index_object_size(struct zero_index_object *object) {
+    size_t header_size, data_size;
+    switch (object->type) {
+        case ZERO_BYTES:
+            return strlen((char *)object->data) + 1;
+        case ZERO_TENSOR:
+            header_size = sizeof(struct zero_tensor) - sizeof(void *);
+            data_size = zero_tensor_numel((struct zero_tensor *)object->data) * zero_dtype_size(((struct zero_tensor *)object->data)->dtype);
+            printf("zero_index_object_size: header_size=%ld data_size=%ld\n", header_size, data_size);
+            return header_size + data_size;
+        case ZERO_OPERATOR:
+            fprintf(stderr, "zero_index_object_size: operator not implemented\n");
+            return 0;
+    }
     return 0;
 }
