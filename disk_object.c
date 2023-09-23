@@ -101,11 +101,11 @@ void zero_disk_object_serialize_tensor(struct zero_disk_object *obj, struct zero
     buf_size += zero_tensor_numel(t) * zero_dtype_size(t->dtype); // t->data
     obj->data = malloc(buf_size);
     obj->size = buf_size;
-    uint32_t name_len = strlen(t->name);
+    uint32_t name_len = strlen(t->name) + 1;
     uint8_t *ptr = (uint8_t *)obj->data;
     memcpy(ptr, &name_len, sizeof(uint32_t));
     ptr += sizeof(uint32_t);
-    memcpy(ptr, t->name, name_len);
+    memcpy(ptr, t->name, name_len * sizeof(char));
     ptr += name_len;
     memcpy(ptr, &(t->dtype), sizeof(uint32_t));
     ptr += sizeof(uint32_t);
@@ -118,15 +118,19 @@ void zero_disk_object_serialize_tensor(struct zero_disk_object *obj, struct zero
 void zero_disk_object_deserialize_tensor(struct zero_disk_object *obj, struct zero_tensor *t) {
     uint8_t *ptr = (uint8_t *)obj->data;
     uint32_t name_len;
+    char *name_buf;
     memcpy(&name_len, ptr, sizeof(uint32_t));
     ptr += sizeof(uint32_t);
-    memcpy(t->name, ptr, name_len);
+    name_buf = malloc(name_len);
+    memcpy(name_buf, ptr, name_len);
+    strcpy(t->name, name_buf);
+    free(name_buf);
     ptr += name_len;
     memcpy(&(t->dtype), ptr, sizeof(uint32_t));
     ptr += sizeof(uint32_t);
     memcpy(&(t->ndim), ptr, sizeof(uint32_t));
     ptr += sizeof(uint32_t);
-    t->shape = (uint32_t *)malloc(sizeof(uint32_t) * t->ndim);
+    t->shape = (int *)malloc(sizeof(uint32_t) * t->ndim);
     memcpy(t->shape, ptr, sizeof(uint32_t) * t->ndim);
     ptr += sizeof(uint32_t) * t->ndim;
     t->data = malloc(zero_tensor_numel(t) * zero_dtype_size(t->dtype));
