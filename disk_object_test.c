@@ -1,80 +1,61 @@
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 
+#include "tensor.h"
 #include "disk_object.h"
 
-struct cat {
-    char name[32];
-    int age;
-    int weight;
-    bool meow;
-};
-
-struct dog {
-    char name[32];
-    int age;
-    int weight;
-    bool bark;
-};
-
 int main() {
-    struct cat c = {"Kitty", 3, 5, true};
-    struct dog d = {"Doggy", 5, 10, true};
-    uint64_t offset = 0;
-    struct zero_disk_object a = {
-        .hash = 0,
-        .offset = 100,
-        .size = sizeof(struct cat)
-    };
-    struct zero_disk_object b = {
-        .hash = 1,
-        .offset = 500,
-        .size = sizeof(struct dog)
-    };
-    struct zero_disk_object so = {
-        .hash = 2,
-        .offset = 1000,
-        .size = strlen("hello")
-    };
+    const int num_tensors = 10;
+    struct zero_tensor *tensors = malloc(sizeof(struct zero_tensor) * num_tensors);
+    float val;
+    for (int i = 0; i < num_tensors; ++i) {
+        char name[ZERO_MAX_TENSOR_NAME_LEN];
+        sprintf(name, "tensor_%d", i);
+        zero_tensor_init(&tensors[i], name, ZERO_BFLOAT16, 2, (uint32_t[]){1 << (i + 1), 1 << (i + 1)});
+        val = (float)i;
+        zero_tensor_fill(&tensors[i], &val);
+    }
+    struct zero_disk_object *objs = malloc(sizeof(struct zero_disk_object) * num_tensors);
+    for (int i = 0; i < num_tensors; ++i) {
+        zero_disk_object_serialize_tensor(&objs[i], &tensors[i]);
+    }
     FILE *fp = fopen("test.zero", "wb");
-    zero_disk_object_write_header(&a, fp);
-    zero_disk_object_write_header(&b, fp);
-    zero_disk_object_write_header(&so, fp);
-    zero_disk_object_write_data(&a, fp, &c);
-    zero_disk_object_write_data(&b, fp, &d);
-    zero_disk_object_write_data(&so, fp, "hello");
+    uint64_t offset = (sizeof(struct zero_disk_object) - sizeof(void *)) * num_tensors;
+    for (int i = 0; i < num_tensors; ++i) {
+        zero_disk_object_write_header(&objs[i], fp);
+        offset += objs[i].size;
+    }
+    for (int i = 0; i < num_tensors; ++i) {
+        zero_disk_object_write_data(&objs[i], fp);
+    }
     fclose(fp);
 
     fp = fopen("test.zero", "rb");
-    zero_disk_object_read_header(&a, fp);
-    zero_disk_object_read_header(&b, fp);
-    zero_disk_object_read_header(&so, fp);
-    struct cat *c2 = malloc(a.size);
-    struct dog *d2 = malloc(b.size);
-    char *s2 = malloc(so.size);
-    zero_disk_object_read_data(&a, fp, c2);
-    zero_disk_object_read_data(&b, fp, d2);
-    zero_disk_object_read_data(&so, fp, s2);
-    if (c2->age == c.age && c2->weight == c.weight && c2->meow == c.meow) {
-        printf("Cat data matches\n");
-    } else {
-        printf("Cat data does not match\n");
-        printf("c1: %d %d %d\n", c.age, c.weight, c.meow);
-        printf("c2: %d %d %d\n", c2->age, c2->weight, c2->meow);
+    struct zero_tensor *tensors2 = malloc(sizeof(struct zero_tensor) * num_tensors);
+    for (int i = 0; i < num_tensors; ++i) {
+        zero_disk_object_read_header(&objs[i], fp);
     }
-    if (d2->age == d.age && d2->weight == d.weight && d2->bark == d.bark) {
-        printf("Dog data matches\n");
-    } else {
-        printf("Dog data does not match\n");
+    for (int i = 0; i < num_tensors; ++i) {
+        zero_disk_object_read_data(&objs[i], fp);
     }
-    if (strcmp(s2, "hello") == 0) {
-        printf("String data matches\n");
-    } else {
-        printf("String data does not match\n");
-        printf("s1: %s\n", "hello");
-        printf("s2: %s\n", s2);
+    fclose(fp);
+    for (int i = 0; i < num_tensors; ++i) {
+        zero_disk_object_deserialize_tensor(&objs[i], &tensors2[i]);
     }
+    float max_diff = 0.0f;
+    for (int i = 0; i < num_tensors; ++i) {
+       if (!zero_tensor_equals(&tensors[i], &tensors2[i], 1e-5, &max_diff)) {
+           printf("Tensor %d not equal\n", i);
+           printf("max_diff: %f\n", max_diff);
+           return 1;
+       } else {
+        printf("Tensor %d equal (max_diff = %f)\n", i, max_diff);
+       }
+    }
+    printf("All tensors equal\n");
     return 0;
 }
+
