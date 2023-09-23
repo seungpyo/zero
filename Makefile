@@ -20,6 +20,9 @@ clean_disk_object_so:
 capi_test:
 	make disk_object_so
 	python zero.py
+	gcc -g0 -o zero_api_test zero_api_test.c zero_disk_object.so
+	./zero_api_test
+	rm -f zero_api_test
 
 clean_capi_test:
 	make clean_disk_object_so

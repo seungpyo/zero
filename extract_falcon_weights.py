@@ -2,7 +2,8 @@ import os
 from pathlib import Path
 from time import time
 import torch
-
+import ctypes
+from zero import zero, ZeroDiskObject, ZeroTensor
 
 hf_cache_dir = os.path.join(str(Path.home()), '.cache', 'huggingface', 'hub')
 model_name = "models--tiiuae--falcon-7b"
@@ -23,39 +24,29 @@ torch_dtype_to_zero_dtype = {
     torch.bfloat16: 3,
 }
 
-
-class ZeroTensor:
-    def __init__(self, name: str, t: torch.Tensor):
-        self.name = name
-        assert len(name) < ZERO_MAX_TENSOR_NAME_LEN
-        self.ndim = t.ndim
-        self.shape = list(t.shape)
-        if t.dtype not in torch_dtype_to_zero_dtype:
-            raise ValueError(f"Unsupported dtype {t.dtype}")
-        self.dtype = torch_dtype_to_zero_dtype[t.dtype]
-        self.data = t.numpy().tobytes()
-        if t.dtype == torch.bfloat16:
-            self.data = bytes([a for i, a in enumerate(self.data) if (i // 2) % 2 == 1])
-
-    def write(self, f):
-        pass
-
-
-with open(f"{model_name}.zero", "wb") as f:
+if __name__ == "__main__":
+    num_tensors = 0
     for bin_filename in bin_filenames:
-        t0 = time()
         state_dict = torch.load(bin_filename, map_location=torch.device('cpu'))
-        t1 = time()
-        print(f"Loaded {bin_filename} in {t1 - t0:.2f} seconds")
-        for k, v in state_dict.items():
-            print(f"NAME: {k}\tSHAPE: {v.shape}")
-            is_bfloat16 = v.dtype == torch.bfloat16
-            if is_bfloat16:
-                print(f"Converting {k} from bfloat16 to float32")
-                v = v.float()
-            b = v.numpy().tobytes()
-            if is_bfloat16:
-                b = bytes([a for i, a in enumerate(b) if (i // 2) % 2 == 1])
+        num_tensors += len(state_dict)
+
+    with open(f"{model_name}.zero", "wb") as f:
+        fd = f.fileno()
+        f.write(num_tensors.to_bytes(4, byteorder='little'))
+        data_offset = (ctypes.sizeof(ZeroDiskObject) - ctypes.sizeof(ctypes.c_void_p)) * num_tensors + ctypes.sizeof(ctypes.c_uint32)
+        for bin_filename in bin_filenames:
+            state_dict = torch.load(bin_filename, map_location=torch.device('cpu'))
+            disk_objects = [ZeroDiskObject() for _ in state_dict]
+            for i, (k, v) in enumerate(state_dict.items()):
+                print(f"NAME: {k}\tSHAPE: {v.shape}")
+                is_bfloat16 = v.dtype == torch.bfloat16
+                if is_bfloat16:
+                    print(f"Converting {k} from bfloat16 to float32")
+                    v = v.float()
+                b = v.numpy().tobytes()
+                if is_bfloat16:
+                    b = bytes([a for i, a in enumerate(b) if (i // 2) % 2 == 1])
+                zt = ZeroTensor.from_tensor(v, k)
 
 
 
