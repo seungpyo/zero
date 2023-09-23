@@ -158,30 +158,6 @@ int zero_tensor_fill(struct zero_tensor *t, void* value) {
     return 0;
 }
 
-size_t zero_tensor_save(FILE *fp, struct zero_tensor *t) {
-    size_t offset0 = ftell(fp);
-    fwrite(t->name, sizeof(char), ZERO_MAX_TENSOR_NAME_LEN, fp);
-    fwrite(&(t->dtype), sizeof(enum zero_dtype), 1, fp);
-    fwrite(&(t->ndim), sizeof(int), 1, fp);
-    fwrite(t->shape, sizeof(int), t->ndim, fp);
-    fwrite(t->data, zero_dtype_size(t->dtype), zero_tensor_numel(t), fp);
-    size_t offset1 = ftell(fp);
-    return offset1 - offset0;
-}
-
-size_t zero_tensor_load(FILE *fp, struct zero_tensor *t) {
-    size_t offset0 = ftell(fp);
-    fread(t->name, sizeof(char), ZERO_MAX_TENSOR_NAME_LEN, fp);
-    fread(&(t->dtype), sizeof(enum zero_dtype), 1, fp);
-    fread(&(t->ndim), sizeof(int), 1, fp);
-    t->shape = (int *)malloc(t->ndim * sizeof(int));
-    fread(t->shape, sizeof(int), t->ndim, fp);
-    t->data = (void *)calloc(zero_tensor_numel(t), zero_dtype_size(t->dtype));
-    fread(t->data, zero_dtype_size(t->dtype), zero_tensor_numel(t), fp);
-    size_t offset1 = ftell(fp);
-    return offset1 - offset0;
-}
-
 bool zero_tensor_equals(struct zero_tensor *lhs, struct zero_tensor *rhs, float eps, float *max_diff) {
     if (lhs->dtype != rhs->dtype) {
         return false;
