@@ -1,11 +1,15 @@
 #include "disk_object.h"
 
 void zero_disk_object_write_header(struct zero_disk_object *obj, FILE *fp) {
-    fwrite(obj, sizeof(struct zero_disk_object), 1, fp);
+    fwrite(&(obj->hash), sizeof(uint32_t), 1, fp);
+    fwrite(&(obj->offset), sizeof(uint64_t), 1, fp);
+    fwrite(&(obj->size), sizeof(uint32_t), 1, fp);
 }
 
 void zero_disk_object_read_header(struct zero_disk_object *obj, FILE *fp) {
-    fread(obj, sizeof(struct zero_disk_object), 1, fp);
+    fread(&(obj->hash), sizeof(uint32_t), 1, fp);
+    fread(&(obj->offset), sizeof(uint64_t), 1, fp);
+    fread(&(obj->size), sizeof(uint32_t), 1, fp);
 }
 
 void zero_disk_object_write_data(struct zero_disk_object *obj, FILE *fp, void *data) {

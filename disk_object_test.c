@@ -25,20 +25,17 @@ int main() {
     uint64_t offset = 0;
     struct zero_disk_object a = {
         .hash = 0,
-        .type = 0,
         .offset = 100,
         .size = sizeof(struct cat)
     };
     struct zero_disk_object b = {
         .hash = 1,
-        .type = 1,
-        .offset = 100 + sizeof(struct cat),
+        .offset = 500,
         .size = sizeof(struct dog)
     };
     struct zero_disk_object so = {
         .hash = 2,
-        .type = 2,
-        .offset = 100 + sizeof(struct cat) + sizeof(struct dog),
+        .offset = 1000,
         .size = strlen("hello")
     };
     FILE *fp = fopen("test.zero", "wb");
@@ -76,6 +73,8 @@ int main() {
         printf("String data matches\n");
     } else {
         printf("String data does not match\n");
+        printf("s1: %s\n", "hello");
+        printf("s2: %s\n", s2);
     }
     return 0;
 }
