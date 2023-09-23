@@ -16,11 +16,14 @@ struct zero_disk_object {
 };
 
 uint32_t zero_disk_object_hash(void *data, uint32_t size);
-
-void zero_disk_object_write_header(struct zero_disk_object *obj, FILE *fp);
-void zero_disk_object_read_header(struct zero_disk_object *obj, FILE *fp);
-void zero_disk_object_write_data(struct zero_disk_object *obj, FILE *fp);
-void zero_disk_object_read_data(struct zero_disk_object *obj, FILE *fp);
+int zero_disk_object_write_header_fd(struct zero_disk_object *obj, int fd, int offset);
+int zero_disk_object_read_header_fd(struct zero_disk_object *obj, int fd, int offset);
+int zero_disk_object_write_data_fd(struct zero_disk_object *obj, int fd, int offset);
+int zero_disk_object_read_data_fd(struct zero_disk_object *obj, int fd, int offset);
+int zero_disk_object_write_header(struct zero_disk_object *obj, FILE *fp);
+int zero_disk_object_read_header(struct zero_disk_object *obj, FILE *fp);
+int zero_disk_object_write_data(struct zero_disk_object *obj, FILE *fp);
+int zero_disk_object_read_data(struct zero_disk_object *obj, FILE *fp);
 
 void zero_disk_object_serialize_tensor(struct zero_disk_object *obj, struct zero_tensor *t);
 void zero_disk_object_deserialize_tensor(struct zero_disk_object *obj, struct zero_tensor *t);
