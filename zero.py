@@ -40,15 +40,22 @@ class ZeroTensor(ctypes.Structure):
 
 
 if __name__ == "__main__":
+    tensors = [torch.tensor([i, i + 1, i + 2]) for i in range(10)]
     with open("capi.zero", "wb") as f:
         fd = f.fileno()
-        zt = ZeroTensor.from_tensor(torch.tensor([1, 2, 3]), "my_weight:123")
-        zdo = ZeroDiskObject()
-        zero.zero_disk_object_serialize_tensor(ctypes.byref(zdo), ctypes.byref(zt))
-        print("Serialized: zdo.hash=", zdo.hash, "zdo.offset=", zdo.offset, "zdo.size=", zdo.size)
-        zdo.offset = 100
-        offset = zero.zero_disk_object_write_header_fd(ctypes.byref(zdo), fd, 0)
-        offset = zero.zero_disk_object_write_data_fd(ctypes.byref(zdo), fd, offset)
+        f.write(len(tensors).to_bytes(4, byteorder='little'))
+        f.seek(0)
+        offset = 0
+        zdos = [ZeroDiskObject() for _ in tensors]
+        for i, zdo in enumerate(zdos):
+            print(f"Writing header for tensor {i}, offset = {offset}")
+            offset = zero.zero_disk_object_write_header_fd(ctypes.byref(zdos[i]), fd, offset)
+        for i, tensor in enumerate(tensors):
+            zt = ZeroTensor.from_tensor(tensor, f"tensor_{i:02d}")
+            zero.zero_disk_object_serialize_tensor(ctypes.byref(zdos[i]), ctypes.byref(zt))
+            print("Serialized: zdo.hash=", zdo.hash, "zdo.offset=", zdo.offset, "zdo.size=", zdo.size)
+            print(f"Writing data for tensor {i}, offset = {offset}")
+            offset = zero.zero_disk_object_write_data_fd(ctypes.byref(zdo), fd, offset)
 
 
 
