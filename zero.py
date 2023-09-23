@@ -12,6 +12,7 @@ torch_dtype_to_zero_dtype = {
 zero = ctypes.CDLL('./zero_disk_object.so') 
 libc = ctypes.CDLL('libSystem.dylib')
 # libc = ctypes.CDLL('libc.so.6') # On Windows, use 'msvcrt.dll' instead
+
 class ZeroDiskObject(ctypes.Structure):
     _fields_ = [
         ("hash", ctypes.c_uint32),
@@ -45,17 +46,20 @@ if __name__ == "__main__":
         fd = f.fileno()
         f.write(len(tensors).to_bytes(4, byteorder='little'))
         f.seek(0)
-        offset = 0
         zdos = [ZeroDiskObject() for _ in tensors]
-        for i, zdo in enumerate(zdos):
-            print(f"Writing header for tensor {i}, offset = {offset}")
-            offset = zero.zero_disk_object_write_header_fd(ctypes.byref(zdos[i]), fd, offset)
+        header_offset = 4
+        offset = (ctypes.sizeof(ZeroDiskObject) - ctypes.sizeof(ctypes.c_void_p)) * len(tensors) + ctypes.sizeof(ctypes.c_uint32)
+        print("Offsets before writing:")
+        print(f"header_offset: {header_offset}")
+        print(f"offset: {offset}")
         for i, tensor in enumerate(tensors):
             zt = ZeroTensor.from_tensor(tensor, f"tensor_{i:02d}")
             zero.zero_disk_object_serialize_tensor(ctypes.byref(zdos[i]), ctypes.byref(zt))
-            print("Serialized: zdo.hash=", zdo.hash, "zdo.offset=", zdo.offset, "zdo.size=", zdo.size)
-            print(f"Writing data for tensor {i}, offset = {offset}")
-            offset = zero.zero_disk_object_write_data_fd(ctypes.byref(zdo), fd, offset)
+            zdos[i].offset = offset
+            offset += zdos[i].size
+        for i, zdo in enumerate(zdos):
+            header_offset = zero.zero_disk_object_write_header_fd(ctypes.byref(zdos[i]), fd, header_offset)
+            zero.zero_disk_object_write_data_fd(ctypes.byref(zdos[i]), fd, zdo.offset)
 
 
 

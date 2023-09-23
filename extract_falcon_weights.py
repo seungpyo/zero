@@ -38,6 +38,7 @@ class ZeroTensor:
             self.data = bytes([a for i, a in enumerate(self.data) if (i // 2) % 2 == 1])
 
     def write(self, f):
+        pass
 
 
 with open(f"{model_name}.zero", "wb") as f:
