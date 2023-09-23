@@ -1,2 +1,5 @@
 *.dSYM/
 .DS_Store
+*.zero
+__pycache__/
+*.so
