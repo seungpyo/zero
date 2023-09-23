@@ -47,8 +47,8 @@ if __name__ == "__main__":
         zero.zero_disk_object_serialize_tensor(ctypes.byref(zdo), ctypes.byref(zt))
         print("Serialized: zdo.hash=", zdo.hash, "zdo.offset=", zdo.offset, "zdo.size=", zdo.size)
         zdo.offset = 100
-        offset = zero.zero_disk_object_write_header_fd(ctypes.byref(zdo), fd, 0);
-        offset = zero.zero_disk_object_write_data_fd(ctypes.byref(zdo), fd, offset);
+        offset = zero.zero_disk_object_write_header_fd(ctypes.byref(zdo), fd, 0)
+        offset = zero.zero_disk_object_write_data_fd(ctypes.byref(zdo), fd, offset)
 
 
 

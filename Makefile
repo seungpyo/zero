@@ -13,7 +13,7 @@ clean_disk_object_so:
 
 capi_test:
 	make disk_object_so
-	python capi.py
+	python zero.py
 
 clean_capi_test:
 	make clean_disk_object_so
