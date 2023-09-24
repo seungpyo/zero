@@ -4,18 +4,15 @@
 #include <math.h>
 #include "tensor.h"
 
-
-float bfloat16_to_float(uint16_t b) {
+float zero_bfloat16_to_float(uint16_t b) {
     uint32_t tmp = ((uint32_t)b) << 16;
     return *((float *)&tmp);
 }
 
-uint16_t float_to_bfloat16(float x) {
+uint16_t zero_float_to_bfloat16(float x) {
     uint16_t b = (uint16_t)(*((uint32_t *)&x) >> 16);
     return b;
 }
-
-
 
 const char* zero_dtype_name(enum zero_dtype t) {
     switch (t)
@@ -124,7 +121,7 @@ void zero_tensor_print(struct zero_tensor *t) {
         fprintf(stderr, "\n");
     } else if (t->dtype == ZERO_BFLOAT16) {
         for (int i = 0; i < numel; i++) {
-            fprintf(stderr, "%f", bfloat16_to_float(((uint16_t *)t->data)[i]));
+            fprintf(stderr, "%f", zero_bfloat16_to_float(((uint16_t *)t->data)[i]));
             if (i < numel - 1) {
                 fprintf(stderr, ", ");
             }
@@ -149,7 +146,7 @@ int zero_tensor_fill(struct zero_tensor *t, void* value) {
         } else if (t->dtype == ZERO_INT64) {
             ((int64_t *)t->data)[i] = *((int64_t *)value);
         } else if (t->dtype == ZERO_BFLOAT16) {
-            ((uint16_t *)t->data)[i] = float_to_bfloat16(*((float *)value));
+            ((uint16_t *)t->data)[i] = zero_float_to_bfloat16(*((float *)value));
         } else {
             fprintf(stderr, "unknown dtype: %d\n", t->dtype);
             return -1;
@@ -204,8 +201,8 @@ bool zero_tensor_equals(struct zero_tensor *lhs, struct zero_tensor *rhs, float 
         break;
         case ZERO_BFLOAT16:
         for (int i = 0; i < numel; i++) {
-            float lhs_f = bfloat16_to_float(((uint16_t *)lhs->data)[i]);
-            float rhs_f = bfloat16_to_float(((uint16_t *)rhs->data)[i]);
+            float lhs_f = zero_bfloat16_to_float(((uint16_t *)lhs->data)[i]);
+            float rhs_f = zero_bfloat16_to_float(((uint16_t *)rhs->data)[i]);
             if (fabs(lhs_f - rhs_f) > eps) {
                 return false;
             }

@@ -18,8 +18,9 @@ enum zero_dtype {
 const char* zero_dtype_name(enum zero_dtype t);
 size_t zero_dtype_size(enum zero_dtype t);
 
-float bfloat16_to_float(uint16_t b);
-uint16_t float_to_bfloat16(float x);
+inline float zero_bfloat16_to_float(uint16_t b);
+inline uint16_t zero_float_to_bfloat16(float x);
+
 
 struct zero_tensor {
     char name[ZERO_MAX_TENSOR_NAME_LEN];
